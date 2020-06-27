@@ -1,7 +1,9 @@
 import PropTypes from "prop-types";
 import React, { useEffect, useState, useCallback } from "react";
+
 import { Presets } from "./Presets";
 import { FlapDigit } from "./FlapDigit";
+import { registerCallback, clearCallback } from './callbacks'
 
 const Modes = {
   Numeric: "num",
@@ -105,10 +107,10 @@ export const FlapDisplay = ({
     // If it's clean, we don't don't need to start the ticker.
     if (clean) return;
 
-    const handle = setInterval(increment, timing);
+    const handle = registerCallback(increment, timing);
 
     return () => {
-      clearTimeout(handle);
+      clearCallback(handle);
     };
   }, [increment, timing, clean]);
 
