@@ -1,22 +1,24 @@
-import PropTypes from 'prop-types'
-import React, { useEffect, useState } from 'react'
-import { FlapStack } from './FlapStack'
-import { Presets } from './Presets'
+import PropTypes from "prop-types";
+import React, { useEffect, useState, useCallback } from "react";
+import { Presets } from "./Presets";
+import { FlapDigit } from "./FlapDigit";
 
 const Modes = {
-  Numeric: 'num',
-  Alphanumeric: 'alpha',
-  Words: 'words'
-}
+  Numeric: "num",
+  Alphanumeric: "alpha",
+};
 
-const splitChars = v => String(v).split('').map(c => c.toUpperCase())
+const splitChars = (v) =>
+  String(v)
+    .split("")
+    .map((c) => c.toUpperCase());
 
 const padValue = (v, length, padChar, padStart) => {
-  const trimmed = v.slice(0, length)
+  const trimmed = v.slice(0, length);
   return padStart
     ? String(trimmed).padStart(length, padChar)
-    : String(trimmed).padEnd(length, padChar)
-}
+    : String(trimmed).padEnd(length, padChar);
+};
 
 export const FlapDisplay = ({
   id,
@@ -24,73 +26,121 @@ export const FlapDisplay = ({
   css,
   value,
   chars,
-  words,
   length,
   padChar,
   padMode,
-  render,
+  timing,
   ...restProps
 }) => {
-  const [stack, setStack] = useState([])
-  const [mode, setMode] = useState(Modes.Numeric)
-  const [digits, setDigits] = useState([])
-  const [children, setChildren] = useState([])
+  const [stack, setStack] = useState([]);
+  const [mode, setMode] = useState(Modes.Numeric);
+  const [cursor, setCursor] = useState([]);
+  const [digits, setDigits] = useState([]);
+  const [clean, setClean] = useState(false);
 
   useEffect(() => {
-    if (words && words.length) {
-      setStack(words)
-      setMode(Modes.Words)
-    } else {
-      setStack(splitChars(chars))
-      setMode(chars.match(/[a-z]/i) ? Modes.Alphanumeric : Modes.Numeric)
-    }
-  }, [chars, words])
+    setStack(splitChars(chars));
+    setMode(chars.match(/[a-z]/i) ? Modes.Alphanumeric : Modes.Numeric);
+  }, [chars]);
 
   useEffect(() => {
-    if (words && words.length) {
-      setDigits([value])
-    } else {
-      const padStart = padMode === 'auto'
-        ? !!value.match(/^[0-9.,+-]*$/)
-        : padMode === 'start'
-      setDigits(splitChars(padValue(value, length, padChar, padStart)))
-    }
-  }, [value, chars, words, length, padChar, padMode])
+    const padStart =
+      padMode === "auto" ? !!value.match(/^[0-9.,+-]*$/) : padMode === "start";
+
+    setDigits(splitChars(padValue(value, length, padChar, padStart)));
+
+    // When the value changes, mark it as not clean, otherwise it will never
+    // display.
+    setClean(false);
+  }, [value, chars, length, padChar, padMode]);
+
+  // On tick, update all the chars. We need to have this in a ref to make it
+  // easier to pass it around with setInterval.
+  const increment = useCallback(() => {
+    setCursor(
+      digits.map((item, idx) => {
+        if (!cursor[idx]) {
+          return {
+            current: 0,
+            prev: 0,
+            target: item,
+          };
+        }
+
+        const cur = cursor[idx];
+
+        if (item != cur.target) {
+          return {
+            ...cur,
+            target: item,
+          };
+        }
+
+        if (stack[cur.current] === cur.target) {
+          return cur;
+        }
+
+        return {
+          ...cur,
+          prev: cur.current,
+          current: (cur.current + 1) % stack.length,
+        };
+      })
+    );
+
+    setClean(
+      digits.reduce((prev, item, idx) => {
+        const cur = cursor[idx] || {};
+        return prev && stack[cur.current] === item;
+      }, true)
+    );
+  }, [setCursor, cursor, stack, digits]);
+
+  // Call increment once on start and on every tick. Note that we are explicitly
+  // not depending on increment in useEffect or it will call it when it
+  // shouldn't.
+  useEffect(increment, []);
 
   useEffect(() => {
-    setChildren(digits.map((digit, i) => (
-      <FlapStack
-        key={i}
-        stack={stack}
-        value={digit}
-        mode={mode}
-        {...restProps}
-      />
-    )))
-  }, [digits, ...Object.values(restProps)])
+    // If it's clean, we don't don't need to start the ticker.
+    if (clean) return;
 
-  return render
-    ? render({ id, className, css, ...restProps, children })
-    : (
-      <div
-        id={id}
-        className={className}
-        css={css}
-        aria-hidden='true'
-        aria-label={value}
-      >
-        {children}
-      </div>
-    )
-}
+    const handle = setInterval(increment, timing);
+
+    return () => {
+      clearTimeout(handle);
+    };
+  }, [increment, timing, clean]);
+
+  return (
+    <div
+      id={id}
+      className={className}
+      css={css}
+      aria-hidden="true"
+      aria-label={value}
+    >
+      {cursor.map((item, idx) => (
+        <FlapDigit
+          key={idx}
+          value={stack[item.current]}
+          prevValue={stack[item.previous]}
+          final={stack[item.current] === item.target}
+          mode={mode}
+          {...restProps}
+        />
+      ))}
+    </div>
+  );
+};
 
 FlapDisplay.defaultProps = {
   chars: Presets.NUM,
-  padChar: ' ',
+  padChar: " ",
   timing: 30,
   hinge: true,
-  padMode: 'auto'
-}
+  padMode: "auto",
+};
 
 FlapDisplay.propTypes = {
   id: PropTypes.string,
@@ -98,11 +148,9 @@ FlapDisplay.propTypes = {
   className: PropTypes.string,
   value: PropTypes.string.isRequired,
   chars: PropTypes.string,
-  words: PropTypes.arrayOf(PropTypes.string),
   length: PropTypes.number,
   padChar: PropTypes.string,
   padMode: PropTypes.string,
   timing: PropTypes.number,
   hinge: PropTypes.bool,
-  render: PropTypes.func
-}
+};

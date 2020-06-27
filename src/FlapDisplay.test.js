@@ -1,7 +1,7 @@
 /* eslint-env jest */
 import { FlapDisplay } from './FlapDisplay'
 import { shallow, mount } from 'enzyme'
-import { FlapStack } from './FlapStack'
+import { FlapDigit } from './FlapDigit'
 
 describe('<FlapDisplay/>', () => {
   let props
@@ -35,22 +35,22 @@ describe('<FlapDisplay/>', () => {
   describe('using padding options', () => {
     it('pads numbers at start', () => {
       const el = mount(<FlapDisplay {...props} value='1' />)
-      expect(el.find(FlapStack).first().prop('value')).toEqual(' ')
+      expect(el.find(FlapDigit).first().prop('value')).toEqual(' ')
     })
 
     it('pads words at end', () => {
       const el = mount(<FlapDisplay {...props} value='X' />)
-      expect(el.find(FlapStack).first().prop('value')).toEqual('X')
+      expect(el.find(FlapDigit).first().prop('value')).toEqual('X')
     })
 
     it('respects padMode prop', () => {
       const el = mount(<FlapDisplay {...props} value='X' padMode='start' />)
-      expect(el.find(FlapStack).first().prop('value')).toEqual(' ')
+      expect(el.find(FlapDigit).first().prop('value')).toEqual(' ')
     })
 
     it('respects padChar prop', () => {
       const el = mount(<FlapDisplay {...props} value='1' padChar='0' />)
-      expect(el.find(FlapStack).first().prop('value')).toEqual('0')
+      expect(el.find(FlapDigit).first().prop('value')).toEqual('0')
     })
   })
 
@@ -90,7 +90,7 @@ describe('<FlapDisplay/>', () => {
 
       beforeEach(() => {
         el = mount(<FlapDisplay {...props} />)
-        digits = el.find(FlapStack)
+        digits = el.find(FlapDigit)
       })
 
       it('renders the correct number of digits', () => {
@@ -123,7 +123,7 @@ describe('<FlapDisplay/>', () => {
 
       beforeEach(() => {
         el = mount(<FlapDisplay {...props} chars={chars} value='1' />)
-        digits = el.find(FlapStack)
+        digits = el.find(FlapDigit)
       })
 
       it('renders the correct number of digits', () => {
@@ -156,7 +156,7 @@ describe('<FlapDisplay/>', () => {
 
       beforeEach(() => {
         el = mount(<FlapDisplay {...props} words={words} value='this' />)
-        digits = el.find(FlapStack)
+        digits = el.find(FlapDigit)
       })
 
       it('renders the correct number of digits', () => {
